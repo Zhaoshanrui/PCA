@@ -1,0 +1,77 @@
+---
+title: "Untitled"
+author: "赵善睿"
+date: "2024/12/9"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+library(readxl)
+library(VIM)
+library(pls)
+
+#清洗数据
+setwd("E:/")
+data <- read_excel("E:/桌面/大挑/变量选择/data.xlsx")
+aggr(data) #查看缺失值位置
+data$`人口出生率(‰)`[data$`人口出生率(‰)` == 0] <- NA
+data <- kNN(data)[1:ncol(data)] #KNN算法插值
+write.table(data, "data_clear.csv", row.names = FALSE, col.names = TRUE,sep = ",")
+raw_data <- data
+
+#主成分分析
+data <- raw_data[, -1]
+data <- data[, -1]
+y <- data$`人口出生率(‰)`
+x <- data[, -1]
+x <- scale(x) #标准化处理
+cor(x)
+PCA=princomp(x,cor=T) #确定主成分个数
+summary(PCA)
+screeplot(PCA,type="lines")
+PCA$loadings[, 1:4] #因子载荷分析
+##主成分得分
+##m为主成分个数
+caculate_score<-function(PCA,m){
+  comp_sd<-summary(PCA)$sdev[1:m] #各主成分标准差
+  comp_score_matrix<-PCA$scores[,1:m] #各主成分得分矩阵
+  comp_score<-data.frame(comp_score_matrix)
+  #计算综合得分
+  comp_score$PC<-as.numeric(comp_score_matrix%*%comp_sd^2/sum(comp_sd^2))
+  #计算排名
+  comp_score$rank<-rank(-comp_score$PC)
+  return(comp_score)
+}
+score<-caculate_score(PCA,4)
+#rownames(score)<-raw_data[,1]
+head(score)
+
+#主成分回归
+model <- lm(y ~ score$Comp.1 + score$Comp.2 + score$Comp.3 + score$Comp.4)
+```
